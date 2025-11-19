@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import express from 'express';
 import {
   Client,
   GatewayIntentBits,
@@ -9,13 +10,13 @@ import {
   Collection
 } from 'discord.js';
 
-// Variáveis de ambiente
+// --- Variáveis de ambiente ---
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const INTERNAL_KEY = process.env.INTERNAL_KEY;
 
-// Taxas
+// --- Taxas ---
 const TAXA_GAMEPASS = 0.039;
 const TAXA_COOKIE = 0.037;
 const TAXA_GIFT = 0.034;
@@ -26,20 +27,19 @@ const LOGO_URL = "https://cdn.discordapp.com/attachments/1439293558678093956/143
 const COOLDOWN_MS = 2000;
 const DELETE_MS = 12 * 60 * 60 * 1000;
 
-// Emojis
+// --- Emojis ---
 const EMOJI_REAIS = "<:volpereais:1437120386901872680>";
 const EMOJI_ROBUX = "<:volverobux:1439311617987706890>";
 
-// Helpers
+// --- Helpers ---
 function formatCurrencyBR(value) {
   return 'R$ ' + Number(value).toFixed(2).replace('.', ',');
 }
-
 function formatNumberFull(num) {
   return Number(num).toLocaleString('pt-BR');
 }
 
-// Tabelas
+// --- Tabelas ---
 const gamepassTabela = [
   { robux: 100, reais: 5 },
   { robux: 200, reais: 9 },
@@ -62,11 +62,11 @@ const cookieTabela = [
   { robux: 10000, reais: 350 }
 ];
 
-// Maps
+// --- Maps ---
 const gamepassMap = new Map(gamepassTabela.map(x => [x.robux, x.reais]));
 const cookieMap = new Map(cookieTabela.map(x => [x.robux, x.reais]));
 
-// Conversões
+// --- Conversões ---
 function gamepassToReais(robux) {
   return gamepassMap.get(robux) ?? parseFloat((robux * TAXA_GAMEPASS).toFixed(2));
 }
@@ -75,7 +75,6 @@ function reaisToGamepass(reais) {
   if (tabela) return tabela.robux;
   return parseInt((reais / TAXA_GAMEPASS).toFixed(0));
 }
-
 function cookieToReais(robux) {
   return cookieMap.get(robux) ?? parseFloat((robux * TAXA_COOKIE).toFixed(2));
 }
@@ -85,16 +84,14 @@ function reaisToCookie(reais) {
   if (tabela) return tabela.robux;
   return parseInt((reais / TAXA_COOKIE).toFixed(0));
 }
-
 function giftToReais(robux) {
   return parseFloat((robux * TAXA_GIFT).toFixed(2));
 }
-
 function limitedToReais(robux) {
   return parseFloat((robux * TAXA_LIMITED).toFixed(2));
 }
 
-// Embed
+// --- Embed ---
 function buildEmbed(mode, input, output) {
   const e = new EmbedBuilder()
     .setColor(ACCENT_COLOR)
@@ -106,23 +103,18 @@ function buildEmbed(mode, input, output) {
     case "gamepass":
       e.setDescription(`${EMOJI_ROBUX} **Robux Gamepass → Reais**\nRobux: **${formatNumberFull(input)}**\nReais aproximado: **${formatCurrencyBR(output)}**`);
       break;
-
     case "reaisgamepass":
       e.setDescription(`${EMOJI_REAIS} **Reais → Robux Gamepass**\nReais: **${formatCurrencyBR(input)}**\nRobux aproximado: **${formatNumberFull(output)} Robux**`);
       break;
-
     case "cookie":
       e.setDescription(`${EMOJI_ROBUX} **Robux Cookie → Reais**\nRobux: **${formatNumberFull(input)}**\nReais aproximado: **${formatCurrencyBR(output)}**`);
       break;
-
     case "reaiscookie":
       e.setDescription(`${EMOJI_REAIS} **Reais → Robux Cookie**\nReais: **${formatCurrencyBR(input)}**\nRobux aproximado: **${formatNumberFull(output)} Robux**`);
       break;
-
     case "gift":
       e.setDescription(`${EMOJI_ROBUX} **Gift → Reais**\nRobux: **${formatNumberFull(input)}**\nPreço aproximado: **${formatCurrencyBR(output)}**`);
       break;
-
     case "limited":
       e.setDescription(`${EMOJI_ROBUX} **Limited → Reais**\nRobux: **${formatNumberFull(input)}**\nPreço aproximado: **${formatCurrencyBR(output)}**`);
       break;
@@ -131,15 +123,14 @@ function buildEmbed(mode, input, output) {
   return e;
 }
 
-// Client
+// --- Client ---
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
   partials: [Partials.Channel],
 });
-
 const cooldowns = new Collection();
 
-// Commands
+// --- Commands ---
 const commands = [
   { name: 'gamepass', description: 'Converte Robux Gamepass → Reais', options: [{ name: 'quantidade', type: 10, description: 'Quantidade de Robux', required: true }] },
   { name: 'reaisgamepass', description: 'Converte Reais → Robux Gamepass', options: [{ name: 'valor', type: 10, description: 'Valor em Reais', required: true }] },
@@ -149,17 +140,16 @@ const commands = [
   { name: 'limited', description: 'Converte Limited → Reais', options: [{ name: 'quantidade', type: 10, description: 'Quantidade de Limited', required: true }] },
 ];
 
-// Registrar comandos
+// --- Registrar comandos ---
 async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(TOKEN);
-
   await rest.put(
     Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
     { body: commands }
   );
 }
 
-// Interações
+// --- Interações ---
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.guild || interaction.guild.id !== GUILD_ID || INTERNAL_KEY !== process.env.INTERNAL_KEY) {
     return interaction.reply({
@@ -174,7 +164,6 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   cooldowns.set(interaction.user.id, Date.now());
-
   if (!interaction.isChatInputCommand()) return;
 
   const cmd = interaction.commandName;
@@ -184,89 +173,75 @@ client.on('interactionCreate', async (interaction) => {
     switch (cmd) {
       case "gamepass":
         const gAmount = interaction.options.getNumber("quantidade", true);
-        if (gAmount <= 0)
-          return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
-
-        msg = await interaction.reply({
-          embeds: [buildEmbed("gamepass", gAmount, gamepassToReais(gAmount))],
-          fetchReply: true
-        });
+        if (gAmount <= 0) return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
+        msg = await interaction.reply({ embeds: [buildEmbed("gamepass", gAmount, gamepassToReais(gAmount))], fetchReply: true });
         break;
-
       case "reaisgamepass":
         const rgAmount = interaction.options.getNumber("valor", true);
-        if (rgAmount <= 0)
-          return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
-
-        msg = await interaction.reply({
-          embeds: [buildEmbed("reaisgamepass", rgAmount, reaisToGamepass(rgAmount))],
-          fetchReply: true
-        });
+        if (rgAmount <= 0) return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
+        msg = await interaction.reply({ embeds: [buildEmbed("reaisgamepass", rgAmount, reaisToGamepass(rgAmount))], fetchReply: true });
         break;
-
       case "cookie":
         const cAmount = interaction.options.getNumber("quantidade", true);
-        if (cAmount < 300)
-          return interaction.reply({ content: "❌ O mínimo para Robux Cookie é 300.", ephemeral: true });
-
-        msg = await interaction.reply({
-          embeds: [buildEmbed("cookie", cAmount, cookieToReais(cAmount))],
-          fetchReply: true
-        });
+        if (cAmount < 300) return interaction.reply({ content: "❌ O mínimo para Robux Cookie é 300.", ephemeral: true });
+        msg = await interaction.reply({ embeds: [buildEmbed("cookie", cAmount, cookieToReais(cAmount))], fetchReply: true });
         break;
-
       case "reaiscookie":
         const rcAmount = interaction.options.getNumber("valor", true);
-        if (rcAmount < 12)
-          return interaction.reply({ content: "❌ O mínimo para Reais Cookie é R$ 12,00.", ephemeral: true });
-
-        msg = await interaction.reply({
-          embeds: [buildEmbed("reaiscookie", rcAmount, reaisToCookie(rcAmount))],
-          fetchReply: true
-        });
+        if (rcAmount < 12) return interaction.reply({ content: "❌ O mínimo para Reais Cookie é R$ 12,00.", ephemeral: true });
+        msg = await interaction.reply({ embeds: [buildEmbed("reaiscookie", rcAmount, reaisToCookie(rcAmount))], fetchReply: true });
         break;
-
       case "gift":
         const giftAmount = interaction.options.getNumber("quantidade", true);
-        if (giftAmount <= 0)
-          return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
-
-        msg = await interaction.reply({
-          embeds: [buildEmbed("gift", giftAmount, giftToReais(giftAmount))],
-          fetchReply: true
-        });
+        if (giftAmount <= 0) return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
+        msg = await interaction.reply({ embeds: [buildEmbed("gift", giftAmount, giftToReais(giftAmount))], fetchReply: true });
         break;
-
       case "limited":
         const limAmount = interaction.options.getNumber("quantidade", true);
-        if (limAmount <= 0)
-          return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
-
-        msg = await interaction.reply({
-          embeds: [buildEmbed("limited", limAmount, limitedToReais(limAmount))],
-          fetchReply: true
-        });
+        if (limAmount <= 0) return interaction.reply({ content: "❌ Valor inválido.", ephemeral: true });
+        msg = await interaction.reply({ embeds: [buildEmbed("limited", limAmount, limitedToReais(limAmount))], fetchReply: true });
         break;
     }
-
-    setTimeout(() => {
-      msg?.delete().catch(() => { });
-    }, DELETE_MS);
-
+    setTimeout(() => { msg?.delete().catch(() => {}); }, DELETE_MS);
   } catch (err) {
     console.error("Erro na interação:", err);
-
-    if (!interaction.replied) {
-      interaction.reply({ content: "Ocorreu um erro interno.", ephemeral: true });
-    }
+    if (!interaction.replied) interaction.reply({ content: "Ocorreu um erro interno.", ephemeral: true });
   }
 });
 
-// Ready
+// --- Ready ---
 client.once('ready', async () => {
   console.log(`🔌 Bot online: ${client.user.tag}`);
   await registerCommands();
 });
 
-// Login
+// --- Login ---
 client.login(TOKEN);
+
+// --- SERVIDOR EXPRESS PARA MANUTENÇÃO 24/7 ---
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Rota raiz
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'Bot online ✅',
+    user: client.user?.tag || 'Inicializando...',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Rota status detalhado
+app.get('/status', (req, res) => {
+  const uptime = process.uptime();
+  res.status(200).json({
+    status: 'online',
+    botTag: client.user?.tag || 'Inicializando...',
+    guilds: client.guilds.cache.size,
+    uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600)/60)}m ${Math.floor(uptime % 60)}s`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Inicia servidor Express
+app.listen(PORT, () => console.log(`🌐 Servidor HTTP rodando na porta ${PORT}`));
